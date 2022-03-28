@@ -1,4 +1,8 @@
-let tulind = require("tulind");
+import tulind from "tulind";
+import { create, all } from "mathjs";
+
+const config = {};
+const math = create(all, config);
 
 let open = [
   1073.439941, 1147.75, 1189.550049, 1146.650024, 1077, 1080.369995, 1000,
@@ -45,7 +49,6 @@ let close = [
   840.22998, 871.599976, 905.390015, 921.159973, 993.97998, 999.109985,
   1013.919983, 1010.640015, 1010.640015,
 ];
-let volume = [];
 
 let date = [
   "2021-12-31T05:00:00.000Z",
@@ -110,84 +113,24 @@ let date = [
   "2022-03-25T04:00:00.000Z",
 ];
 
-let vqh_length = 7; // Default
-let vqh_filter = 2; // Default
-let ticker_size = 0.01; // For stock
+class Atr {
+  calculate(high, low, close, period) {
+    let result = [];
+    tulind.indicators.atr.indicator(
+      [high, low, close],
+      [period],
+      function (err, res) {
+        for (let i = 0; i < tulind.indicators.atr.start([period]); i++) {
+          result.push(0);
+        }
+        result.push(...res[0]);
+      }
+    );
 
-let vqi = [];
-let trend = [];
-
-let cHigh = [];
-let cLow = [];
-let cOpen = [];
-let cClose = [];
-let sumVqi = [];
-
-for (let i = 0; i < vqh_length - 1; i++) {
-  cHigh.push(0);
-  cLow.push(0);
-  cOpen.push(0);
-  cClose.push(0);
-
-  vqi.push(0);
-  trend.push(0);
-  sumVqi.push(0);
-}
-
-tulind.indicators.wma.indicator([high], [vqh_length], function (err, results) {
-  cHigh.push(...results[0]);
-});
-
-tulind.indicators.wma.indicator([low], [vqh_length], function (err, results) {
-  cLow.push(...results[0]);
-});
-
-tulind.indicators.wma.indicator([open], [vqh_length], function (err, results) {
-  cOpen.push(...results[0]);
-});
-
-tulind.indicators.wma.indicator([close], [vqh_length], function (err, results) {
-  cClose.push(...results[0]);
-});
-
-let pClose = [...cClose];
-pClose.unshift(0);
-
-result = {};
-for (let i = vqh_length - 1; i < open.length; i++) {
-  /*  current Done Bar = i;
-    previous Done Bar = i - 1; */
-
-  let vqiCalc =
-    cHigh[i] - cLow[i] != 0 &&
-    Math.max(cHigh[i], pClose[i]) - Math.min(cLow[i], pClose[i]) != 0
-      ? ((cClose[i] - pClose[i]) /
-          (Math.max(cHigh[i], pClose[i]) - Math.min(cLow[i], pClose[i])) +
-          (cClose[i] - cOpen[i]) / (cHigh[i] - cLow[i])) *
-        0.5
-      : vqi[i - 1];
-
-  // Skip jump from 0 to actual price, when first run
-  if (vqh_length - 1 == i) {
-    trend.push(0);
-    vqi.push(0);
-    sumVqi.push(0);
-    continue;
+    return math.matrixFromColumns(date, result);
   }
-
-  vqi.push(
-    Math.abs(vqiCalc) * ((cClose[i] - pClose[i] + cClose[i] - cOpen[i]) * 0.5)
-  );
-  sumVqi.push(vqi.reduce((partialSum, a) => partialSum + a, 0));
-
-  let toAdd = sumVqi[i] - sumVqi[i - 1] > 0 ? 1 : -1;
-  trend.push(
-    Math.abs(sumVqi[i - 1] - sumVqi[i]) >= 0 &&
-      Math.abs(sumVqi[i - 1] - sumVqi[i]) <= vqh_filter * ticker_size * 10
-      ? trend[i - 1]
-      : toAdd
-  );
-  result[date[i]] = trend[i];
 }
 
-console.log(result);
+let period = 14;
+let atr = new Atr();
+console.log(atr.calculate(high, low, close, period));
