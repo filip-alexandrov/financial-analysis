@@ -1,11 +1,13 @@
 import tulind from "tulind";
+import fs from "fs";
+import { readFile } from "fs/promises";
 
 import { create, all } from "mathjs";
 
 const config = {};
 const math = create(all, config);
 
-let open = [
+/* let open = [
   1073.439941, 1147.75, 1189.550049, 1146.650024, 1077, 1080.369995, 1000,
   1053.670044, 1078.849976, 1109.069946, 1019.880005, 1026.609985, 1041.709961,
   1009.72998, 996.340027, 904.76001, 914.200012, 952.429993, 933.359985,
@@ -113,10 +115,30 @@ let date = [
   "2022-03-24T04:00:00.000Z",
   "2022-03-25T04:00:00.000Z",
   "2022-03-25T04:00:00.000Z",
-];
+]; */
+
+const json = JSON.parse(
+  await readFile(new URL("../data/fx/EURUSD_H4.json", import.meta.url))
+);
+
+let date = [];
+let open = [];
+let high = [];
+let low = [];
+let close = [];
+let volume = [];
+
+for (let item of json) {
+  date.push(item.Time);
+  open.push(item.Open);
+  high.push(item.High);
+  low.push(item.Low);
+  close.push(item.Close);
+  volume.push(item.Volume);
+}
 
 class Vqh {
-  calculate(vqh_length, vqh_filter, ticker_size) {
+  calculate(vqh_length, vqh_filter, ticker_size, [high, low, open, close]) {
     let vqi = [];
     let trend = [];
 
@@ -216,12 +238,110 @@ class Vqh {
 
 let vqh_length = 7; // Default
 let vqh_filter = 2; // Default
-let ticker_size = 0.01; // For stock
+let ticker_size = 0.00001;
 
 let vqh = new Vqh();
-console.log(
-  math.matrixFromColumns(
-    date,
-    vqh.calculate(vqh_length, vqh_filter, ticker_size)
-  )
-);
+let vqhIndicator = vqh.calculate(vqh_length, vqh_filter, ticker_size, [
+  high,
+  low,
+  open,
+  close,
+]);
+
+let marketData = [];
+for (let i = 0; i < date.length; i++) {
+  marketData.push({
+    date: date[i],
+    open: open[i],
+    close: close[i],
+    high: high[i],
+    low: low[i],
+    vqh: vqhIndicator[i],
+  });
+}
+
+let totalProfit = 0;
+let numberOfPostions = 0;
+function calculateProfit(trades, lastTradeIndex) {
+  if (trades[lastTradeIndex].tradeType == "long") {
+    trades[lastTradeIndex].profit =
+      trades[lastTradeIndex].closed - trades[lastTradeIndex].opened;
+    totalProfit += trades[lastTradeIndex].profit;
+    numberOfPostions++;
+  } else if (trades[lastTradeIndex].tradeType == "short") {
+    trades[lastTradeIndex].profit =
+      trades[lastTradeIndex].opened - trades[lastTradeIndex].closed;
+    totalProfit += trades[lastTradeIndex].profit;
+    numberOfPostions++;
+  }
+}
+
+function openPosition(trades, marketData, i, tradeType) {
+  trades.push({
+    openDate: marketData[i + 1].date,
+    opened: marketData[i + 1].open,
+    tradeType,
+  });
+}
+function closePosition(trades, marketData, i, lastTradeIndex) {
+  trades[lastTradeIndex]["closed"] = marketData[i + 1].open;
+  trades[lastTradeIndex]["closedDate"] = marketData[i + 1].date;
+  calculateProfit(trades, lastTradeIndex);
+}
+
+let trades = [];
+let positionOpened = false;
+for (let i = 0; i < date.length; i++) {
+  if (marketData[i].vqh == 0) {
+    continue;
+  }
+
+  if (marketData[i].vqh != marketData[i - 1].vqh && positionOpened == false) {
+    if (marketData[i].vqh == 1) {
+      openPosition(trades, marketData, i, "long");
+      positionOpened = true;
+      continue;
+    } else if (marketData[i].vqh == -1) {
+      openPosition(trades, marketData, i, "short");
+      positionOpened = true;
+      continue;
+    }
+  }
+
+  if (marketData[i].vqh != marketData[i - 1].vqh && positionOpened == true) {
+    let lastTradeIndex = trades.length - 1;
+
+    if (marketData[i].vqh == 1) {
+      closePosition(trades, marketData, i, lastTradeIndex);
+      openPosition(trades, marketData, i, "long");
+      continue;
+    } else if (marketData[i].vqh == -1) {
+      closePosition(trades, marketData, i, lastTradeIndex);
+      openPosition(trades, marketData, i, "short");
+      continue;
+    }
+  }
+}
+
+function saveJsonToFile(json, fileName) {
+  return new Promise((resolve, reject) => {
+    let jsonString = JSON.stringify(json);
+    fs.writeFile(fileName, jsonString, (err) => {
+      if (err) {
+        reject(err);
+      }
+      resolve();
+    });
+  });
+}
+
+trades.push({
+  DATA: "TOTAL_PROFIT_REPORT",
+  totalProfit,
+  vqh_length,
+  vqh_filter,
+  ticker_size,
+  numberOfPostions,
+});
+
+saveJsonToFile(trades, "trades.json");
