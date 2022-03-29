@@ -1,5 +1,20 @@
 import Atr from "./indicators/atr.js";
 import TsiMacd from "./indicators/tsi_macd.js";
+import Kama from "./indicators/kama.js";
+import Rex from "./indicators/rex.js";
+import VolatilityRange from "./indicators/VolatilityRange.js";
+
+let open = [
+  1073.439941, 1147.75, 1189.550049, 1146.650024, 1077, 1080.369995, 1000,
+  1053.670044, 1078.849976, 1109.069946, 1019.880005, 1026.609985, 1041.709961,
+  1009.72998, 996.340027, 904.76001, 914.200012, 952.429993, 933.359985,
+  831.559998, 872.710022, 935.210022, 928.179993, 882, 897.219971, 923.789978,
+  905.530029, 935, 908.369995, 909.630005, 861.570007, 900, 914.049988,
+  913.26001, 886, 834.130005, 830.429993, 700.390015, 809.22998, 815.01001,
+  869.679993, 872.130005, 878.77002, 849.099976, 856.299988, 795.530029,
+  839.47998, 851.450012, 840.200012, 780.609985, 775.27002, 809, 830.98999,
+  874.48999, 914.97998, 930, 979.940002, 1009.72998, 1008, 1008,
+];
 
 let high = [
   1082, 1201.069946, 1208, 1170.339966, 1088, 1080.930054, 1059.099976,
@@ -99,9 +114,14 @@ let date = [
   "2022-03-25T04:00:00.000Z",
 ];
 
-let period = 14;
 let atr = new Atr();
 let tsi_macd = new TsiMacd();
+let kama = new Kama();
+let rex = new Rex();
+let volatilityRange = new VolatilityRange();
 
-// console.log(atr.calculate([high, low, close], period));
+// console.log(atr.calculate([high, low, close], 14));
 // console.log(tsi_macd.calculate(8, 21, 8, 5, 9, [close]));
+// console.log(kama.calculate([close], 21));
+// console.log(rex.calculate(14, 14, [close, open, low, high]));
+// console.log(volatilityRange.calculate(8, 13, 6, 100, -10, 10, [close]));
