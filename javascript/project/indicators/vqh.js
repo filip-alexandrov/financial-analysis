@@ -236,93 +236,115 @@ class Vqh {
   }
 }
 
-let vqh_length = 7; // Default
-let vqh_filter = 2; // Default
-let ticker_size = 0.00001;
+let tradeInfo = [];
+let vqhTestLengthValues = [7, 2, 5, 10, 20, 30, 50];
+let vqhTestFilterValues = [2, 1, 5, 10, 20, 30, 50];
 
-let vqh = new Vqh();
-let vqhIndicator = vqh.calculate(vqh_length, vqh_filter, ticker_size, [
-  high,
-  low,
-  open,
-  close,
-]);
+for (let vqhTestLength of vqhTestLengthValues) {
+  for (let vqhTestFilter of vqhTestFilterValues) {
+    let vqh_length = vqhTestLength; // Default
+    let vqh_filter = vqhTestFilter; // Default
+    let ticker_size = 0.00001;
 
-let marketData = [];
-for (let i = 0; i < date.length; i++) {
-  marketData.push({
-    date: date[i],
-    open: open[i],
-    close: close[i],
-    high: high[i],
-    low: low[i],
-    vqh: vqhIndicator[i],
-  });
-}
+    let vqh = new Vqh();
+    let vqhIndicator = vqh.calculate(vqh_length, vqh_filter, ticker_size, [
+      high,
+      low,
+      open,
+      close,
+    ]);
 
-let totalProfit = 0;
-let numberOfPostions = 0;
-function calculateProfit(trades, lastTradeIndex) {
-  if (trades[lastTradeIndex].tradeType == "long") {
-    trades[lastTradeIndex].profit =
-      trades[lastTradeIndex].closed - trades[lastTradeIndex].opened;
-    totalProfit += trades[lastTradeIndex].profit;
-    numberOfPostions++;
-  } else if (trades[lastTradeIndex].tradeType == "short") {
-    trades[lastTradeIndex].profit =
-      trades[lastTradeIndex].opened - trades[lastTradeIndex].closed;
-    totalProfit += trades[lastTradeIndex].profit;
-    numberOfPostions++;
-  }
-}
-
-function openPosition(trades, marketData, i, tradeType) {
-  trades.push({
-    openDate: marketData[i + 1].date,
-    opened: marketData[i + 1].open,
-    tradeType,
-  });
-}
-function closePosition(trades, marketData, i, lastTradeIndex) {
-  trades[lastTradeIndex]["closed"] = marketData[i + 1].open;
-  trades[lastTradeIndex]["closedDate"] = marketData[i + 1].date;
-  calculateProfit(trades, lastTradeIndex);
-}
-
-let trades = [];
-let positionOpened = false;
-for (let i = 0; i < date.length; i++) {
-  if (marketData[i].vqh == 0) {
-    continue;
-  }
-
-  if (marketData[i].vqh != marketData[i - 1].vqh && positionOpened == false) {
-    if (marketData[i].vqh == 1) {
-      openPosition(trades, marketData, i, "long");
-      positionOpened = true;
-      continue;
-    } else if (marketData[i].vqh == -1) {
-      openPosition(trades, marketData, i, "short");
-      positionOpened = true;
-      continue;
+    let marketData = [];
+    for (let i = 0; i < date.length; i++) {
+      marketData.push({
+        date: date[i],
+        open: open[i],
+        close: close[i],
+        high: high[i],
+        low: low[i],
+        vqh: vqhIndicator[i],
+      });
     }
-  }
 
-  if (marketData[i].vqh != marketData[i - 1].vqh && positionOpened == true) {
-    let lastTradeIndex = trades.length - 1;
-
-    if (marketData[i].vqh == 1) {
-      closePosition(trades, marketData, i, lastTradeIndex);
-      openPosition(trades, marketData, i, "long");
-      continue;
-    } else if (marketData[i].vqh == -1) {
-      closePosition(trades, marketData, i, lastTradeIndex);
-      openPosition(trades, marketData, i, "short");
-      continue;
+    let totalProfit = 0;
+    let numberOfPostions = 0;
+    function calculateProfit(trades, lastTradeIndex) {
+      if (trades[lastTradeIndex].tradeType == "long") {
+        trades[lastTradeIndex].profit =
+          trades[lastTradeIndex].closed - trades[lastTradeIndex].opened;
+        totalProfit += trades[lastTradeIndex].profit;
+        numberOfPostions++;
+      } else if (trades[lastTradeIndex].tradeType == "short") {
+        trades[lastTradeIndex].profit =
+          trades[lastTradeIndex].opened - trades[lastTradeIndex].closed;
+        totalProfit += trades[lastTradeIndex].profit;
+        numberOfPostions++;
+      }
     }
+
+    function openPosition(trades, marketData, i, tradeType) {
+      trades.push({
+        openDate: marketData[i + 1].date,
+        opened: marketData[i + 1].open,
+        tradeType,
+      });
+    }
+    function closePosition(trades, marketData, i, lastTradeIndex) {
+      trades[lastTradeIndex]["closed"] = marketData[i + 1].open;
+      trades[lastTradeIndex]["closedDate"] = marketData[i + 1].date;
+      calculateProfit(trades, lastTradeIndex);
+    }
+
+    let trades = [];
+    let positionOpened = false;
+    for (let i = 0; i < date.length; i++) {
+      if (marketData[i].vqh == 0) {
+        continue;
+      }
+
+      if (
+        marketData[i].vqh != marketData[i - 1].vqh &&
+        positionOpened == false
+      ) {
+        if (marketData[i].vqh == 1) {
+          openPosition(trades, marketData, i, "long");
+          positionOpened = true;
+          continue;
+        } else if (marketData[i].vqh == -1) {
+          openPosition(trades, marketData, i, "short");
+          positionOpened = true;
+          continue;
+        }
+      }
+
+      if (
+        marketData[i].vqh != marketData[i - 1].vqh &&
+        positionOpened == true
+      ) {
+        let lastTradeIndex = trades.length - 1;
+
+        if (marketData[i].vqh == 1) {
+          closePosition(trades, marketData, i, lastTradeIndex);
+          openPosition(trades, marketData, i, "long");
+          continue;
+        } else if (marketData[i].vqh == -1) {
+          closePosition(trades, marketData, i, lastTradeIndex);
+          openPosition(trades, marketData, i, "short");
+          continue;
+        }
+      }
+    }
+
+    tradeInfo.push({
+      DATA: "TOTAL_PROFIT_REPORT",
+      totalProfit,
+      vqh_length,
+      vqh_filter,
+      ticker_size,
+      numberOfPostions,
+    });
   }
 }
-
 function saveJsonToFile(json, fileName) {
   return new Promise((resolve, reject) => {
     let jsonString = JSON.stringify(json);
@@ -334,14 +356,4 @@ function saveJsonToFile(json, fileName) {
     });
   });
 }
-
-trades.push({
-  DATA: "TOTAL_PROFIT_REPORT",
-  totalProfit,
-  vqh_length,
-  vqh_filter,
-  ticker_size,
-  numberOfPostions,
-});
-
-saveJsonToFile(trades, "trades.json");
+saveJsonToFile(tradeInfo, "trades.json");

@@ -1,7 +1,3 @@
-/* import * as data from "./EURUSD240.json";
-
-console.log(data[0].date); */
-
 import { readFile } from "fs/promises";
 
 const json = JSON.parse(
