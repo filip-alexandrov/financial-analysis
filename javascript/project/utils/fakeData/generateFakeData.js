@@ -1,5 +1,6 @@
 import Walk from "random-walk";
 import fs from "fs";
+import addHighLow from "./addHighLow.js";
 
 function saveJsonToFile(json, fileName) {
   return new Promise((resolve, reject) => {
@@ -13,12 +14,13 @@ function saveJsonToFile(json, fileName) {
   });
 }
 
-let totalRuns = 1; // 10 runs together
+let totalRuns = 10; // 10 runs together
 let runDuration = 10; // 1200 = ~65k records
-let paramBase = 1; // Starting price (from fakeDataParameters.js)
-let paramScale = 100; // Volatility (from fakeDataParameters.js)
+let paramBase = 1.1; // Starting price (from fakeDataParameters.js)
+let paramScale = 140; // Volatility (from fakeDataParameters.js)
 
 for (let i = 0; i < totalRuns; i++) {
+  const barPrices = new addHighLow("fx", "EURUSD_H4");
   const walk = new Walk();
 
   let params = {
@@ -33,7 +35,7 @@ for (let i = 0; i < totalRuns; i++) {
   let time = 0;
 
   setTimeout(() => {
-    saveJsonToFile(generatedData, `./fakedata/generatedData-${i}.json`)
+    saveJsonToFile(generatedData, `../../data/fx/fake/generatedData-${i}.json`)
       .then(() => {
         console.log("Written to file");
       })
@@ -47,9 +49,16 @@ for (let i = 0; i < totalRuns; i++) {
     if (even == true) {
       even = false;
 
+      if (time != 0) {
+        generatedData[generatedData.length - 1].Close =
+          result - barPrices.openClose();
+      }
+
       generatedData.push({
         Time: time,
         Open: result,
+        High: result - barPrices.openHigh(),
+        Low: result - barPrices.openLow(),
       });
       time++;
     } else if (even == false) {

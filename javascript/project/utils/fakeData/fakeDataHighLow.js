@@ -23,19 +23,27 @@ let data = [];
 
 const eur4h = JSON.parse(
   await readFile(
-    new URL(`../data/${targetCategory}/${targetFile}.json`, import.meta.url)
+    new URL(`../../data/${targetCategory}/${targetFile}.json`, import.meta.url)
   )
 );
 
 for (let i = 0; i < eur4h.length; i++) {
+  if (i == 0) {
+    data.push({
+      OpenLow: eur4h[i].Open - eur4h[i].Low,
+      OpenHigh: eur4h[i].Open - eur4h[i].High,
+      OpenClose: 0,
+    });
+    continue;
+  }
   data.push({
     OpenLow: eur4h[i].Open - eur4h[i].Low,
     OpenHigh: eur4h[i].Open - eur4h[i].High,
-    OpenClose: eur4h[i].Open - eur4h[i].Close,
+    OpenClose: eur4h[i].Open - eur4h[i - 1].Close,
   });
 }
 
 saveJsonToFile(
   data,
-  `../data/${targetCategory}/fake/${targetFile}-high-low.json`
+  `../../data/${targetCategory}/fake/${targetFile}-high-low.json`
 );
