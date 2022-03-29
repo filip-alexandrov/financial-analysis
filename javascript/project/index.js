@@ -3,8 +3,14 @@ import TsiMacd from "./indicators/tsi_macd.js";
 import Kama from "./indicators/kama.js";
 import Rex from "./indicators/rex.js";
 import VolatilityRange from "./indicators/VolatilityRange.js";
+import Vqh from "./indicators/vqh.js";
 
-let open = [
+import fs from "fs";
+import { create, all } from "mathjs";
+const config = {};
+const math = create(all, config);
+
+/* let open = [
   1073.439941, 1147.75, 1189.550049, 1146.650024, 1077, 1080.369995, 1000,
   1053.670044, 1078.849976, 1109.069946, 1019.880005, 1026.609985, 1041.709961,
   1009.72998, 996.340027, 904.76001, 914.200012, 952.429993, 933.359985,
@@ -112,16 +118,169 @@ let date = [
   "2022-03-24T04:00:00.000Z",
   "2022-03-25T04:00:00.000Z",
   "2022-03-25T04:00:00.000Z",
-];
+]; */
 
 let atr = new Atr();
 let tsi_macd = new TsiMacd();
 let kama = new Kama();
 let rex = new Rex();
 let volatilityRange = new VolatilityRange();
+let vqh = new Vqh();
 
 // console.log(atr.calculate([high, low, close], 14));
 // console.log(tsi_macd.calculate(8, 21, 8, 5, 9, [close]));
 // console.log(kama.calculate([close], 21));
 // console.log(rex.calculate(14, 14, [close, open, low, high]));
 // console.log(volatilityRange.calculate(8, 13, 6, 100, -10, 10, [close]));
+/* console.log(
+  math.matrixFromColumns(
+    date,
+    vqh.calculate(7, 2, 0.00001, [high, low, open, close])
+  )
+); */
+
+let category = "fx";
+let ticker = "EURUSD_H4";
+
+const json = JSON.parse(
+  fs.readFileSync(new URL(`./data/${category}/${ticker}.json`, import.meta.url))
+);
+
+let date = [];
+let open = [];
+let high = [];
+let low = [];
+let close = [];
+let volume = [];
+
+for (let item of json) {
+  date.push(item.Time);
+  open.push(item.Open);
+  high.push(item.High);
+  low.push(item.Low);
+  close.push(item.Close);
+  volume.push(item.Volume);
+}
+
+/* let tradeInfo = [];
+let vqhTestLengthValues = [7];
+let vqhTestFilterValues = [2];
+
+for (let vqhTestLength of vqhTestLengthValues) {
+  for (let vqhTestFilter of vqhTestFilterValues) {
+    let vqh_length = vqhTestLength; // Default
+    let vqh_filter = vqhTestFilter; // Default
+    let ticker_size = 0.00001;
+
+    let vqh = new Vqh();
+    let vqhIndicator = vqh.calculate(vqh_length, vqh_filter, ticker_size, [
+      high,
+      low,
+      open,
+      close,
+    ]);
+
+    let marketData = [];
+    for (let i = 0; i < date.length; i++) {
+      marketData.push({
+        date: date[i],
+        open: open[i],
+        close: close[i],
+        high: high[i],
+        low: low[i],
+        vqh: vqhIndicator[i],
+      });
+    }
+
+    let totalProfit = 0;
+    let numberOfPostions = 0;
+    function calculateProfit(trades, lastTradeIndex) {
+      if (trades[lastTradeIndex].tradeType == "long") {
+        trades[lastTradeIndex].profit =
+          trades[lastTradeIndex].closed - trades[lastTradeIndex].opened;
+        totalProfit += trades[lastTradeIndex].profit;
+        numberOfPostions++;
+      } else if (trades[lastTradeIndex].tradeType == "short") {
+        trades[lastTradeIndex].profit =
+          trades[lastTradeIndex].opened - trades[lastTradeIndex].closed;
+        totalProfit += trades[lastTradeIndex].profit;
+        numberOfPostions++;
+      }
+    }
+
+    function openPosition(trades, marketData, i, tradeType) {
+      trades.push({
+        openDate: marketData[i + 1].date,
+        opened: marketData[i + 1].open,
+        tradeType,
+      });
+    }
+    function closePosition(trades, marketData, i, lastTradeIndex) {
+      trades[lastTradeIndex]["closed"] = marketData[i + 1].open;
+      trades[lastTradeIndex]["closedDate"] = marketData[i + 1].date;
+      calculateProfit(trades, lastTradeIndex);
+    }
+
+    let trades = [];
+    let positionOpened = false;
+    for (let i = 0; i < date.length; i++) {
+      if (marketData[i].vqh == 0) {
+        continue;
+      }
+
+      if (
+        marketData[i].vqh != marketData[i - 1].vqh &&
+        positionOpened == false
+      ) {
+        if (marketData[i].vqh == 1) {
+          openPosition(trades, marketData, i, "long");
+          positionOpened = true;
+          continue;
+        } else if (marketData[i].vqh == -1) {
+          openPosition(trades, marketData, i, "short");
+          positionOpened = true;
+          continue;
+        }
+      }
+
+      if (
+        marketData[i].vqh != marketData[i - 1].vqh &&
+        positionOpened == true
+      ) {
+        let lastTradeIndex = trades.length - 1;
+
+        if (marketData[i].vqh == 1) {
+          closePosition(trades, marketData, i, lastTradeIndex);
+          openPosition(trades, marketData, i, "long");
+          continue;
+        } else if (marketData[i].vqh == -1) {
+          closePosition(trades, marketData, i, lastTradeIndex);
+          openPosition(trades, marketData, i, "short");
+          continue;
+        }
+      }
+    }
+
+    tradeInfo.push({
+      DATA: "TOTAL_PROFIT_REPORT",
+      totalProfit,
+      vqh_length,
+      vqh_filter,
+      ticker_size,
+      numberOfPostions,
+    });
+  }
+}
+function saveJsonToFile(json, fileName) {
+  return new Promise((resolve, reject) => {
+    let jsonString = JSON.stringify(json);
+    fs.writeFile(fileName, jsonString, (err) => {
+      if (err) {
+        reject(err);
+      }
+      resolve();
+    });
+  });
+}
+saveJsonToFile(tradeInfo, "trades.json");
+ */
