@@ -5,6 +5,7 @@ class Kama {
   constructor() {
     const config = {};
     this.math = create(all, config);
+    this.kamaValue;
   }
   calculate([close], period) {
     let result = [];
@@ -14,7 +15,12 @@ class Kama {
       }
       result.push(...res[0]);
     });
-    return result;
+    this.kamaValue = result;
+    return;
+  }
+
+  getValue(index) {
+    return this.kamaValue[index];
   }
 }
 

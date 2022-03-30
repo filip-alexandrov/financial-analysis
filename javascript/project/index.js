@@ -4,6 +4,7 @@ import Kama from "./indicators/kama.js";
 import Rex from "./indicators/rex.js";
 import VolatilityRange from "./indicators/VolatilityRange.js";
 import Vqh from "./indicators/vqh.js";
+import MarketData from "./MarketData.js";
 
 import fs from "fs";
 import { create, all } from "mathjs";
@@ -126,6 +127,7 @@ let kama = new Kama();
 let rex = new Rex();
 let volatilityRange = new VolatilityRange();
 let vqh = new Vqh();
+let data = new MarketData("fx", "EURUSD_H4");
 
 // console.log(atr.calculate([high, low, close], 14));
 // console.log(tsi_macd.calculate(8, 21, 8, 5, 9, [close]));
@@ -139,138 +141,245 @@ let vqh = new Vqh();
   )
 ); */
 
-let category = "fx";
-let ticker = "EURUSD_H4";
+/* atr.calculate([data.high, data.low, data.close], 14);
+tsi_macd.calculate(8, 21, 8, 5, 9, [data.close]);
+kama.calculate([data.close], 21);
+rex.calculate(14, 14, [data.close, data.open, data.low, data.high]);
+volatilityRange.calculate(8, 13, 6, 100, -10, 10, [data.close]);
+vqh.calculate(7, 2, 0.00001, [data.high, data.low, data.open, data.close]);
 
-const json = JSON.parse(
-  fs.readFileSync(new URL(`./data/${category}/${ticker}.json`, import.meta.url))
-);
+console.log(atr.getValue(data.high.length - 1)); */
 
-let date = [];
-let open = [];
-let high = [];
-let low = [];
-let close = [];
-let volume = [];
+// ----------
+let tradeInfo = [];
+let maxParameter = 50; // initial max range
+let reducerMaxParam = 2; // reduce range by factor
+let maxTestIteration = 3; // Tests to be performed
+// if numberTestArrays == testSize, exec time is const
+let numberTestArrays = 3; // independent random arrays in each test
+let testSize = 3; // random elements in each array
 
-for (let item of json) {
-  date.push(item.Time);
-  open.push(item.Open);
-  high.push(item.High);
-  low.push(item.Low);
-  close.push(item.Close);
-  volume.push(item.Volume);
-}
+let vqhLength = [];
+let vqhFilter = [];
+let testIteration = 0;
+function tradeControl() {
+  if (tradeInfo.length == 0) {
+    for (let i = 0; i < numberTestArrays; i++) {
+      vqhLength.push(
+        ...Array.from(
+          { length: testSize },
+          () => 1 + Math.floor(Math.random() * maxParameter)
+        )
+      );
 
-/* let tradeInfo = [];
-let vqhTestLengthValues = [7];
-let vqhTestFilterValues = [2];
-
-for (let vqhTestLength of vqhTestLengthValues) {
-  for (let vqhTestFilter of vqhTestFilterValues) {
-    let vqh_length = vqhTestLength; // Default
-    let vqh_filter = vqhTestFilter; // Default
-    let ticker_size = 0.00001;
-
-    let vqh = new Vqh();
-    let vqhIndicator = vqh.calculate(vqh_length, vqh_filter, ticker_size, [
-      high,
-      low,
-      open,
-      close,
-    ]);
-
-    let marketData = [];
-    for (let i = 0; i < date.length; i++) {
-      marketData.push({
-        date: date[i],
-        open: open[i],
-        close: close[i],
-        high: high[i],
-        low: low[i],
-        vqh: vqhIndicator[i],
-      });
+      vqhFilter.push(
+        ...Array.from(
+          { length: testSize },
+          () => 1 + Math.floor(Math.random() * maxParameter)
+        )
+      );
     }
+  } else {
+    maxParameter = maxParameter / reducerMaxParam;
 
-    let totalProfit = 0;
-    let numberOfPostions = 0;
-    function calculateProfit(trades, lastTradeIndex) {
-      if (trades[lastTradeIndex].tradeType == "long") {
-        trades[lastTradeIndex].profit =
-          trades[lastTradeIndex].closed - trades[lastTradeIndex].opened;
-        totalProfit += trades[lastTradeIndex].profit;
-        numberOfPostions++;
-      } else if (trades[lastTradeIndex].tradeType == "short") {
-        trades[lastTradeIndex].profit =
-          trades[lastTradeIndex].opened - trades[lastTradeIndex].closed;
-        totalProfit += trades[lastTradeIndex].profit;
-        numberOfPostions++;
-      }
-    }
-
-    function openPosition(trades, marketData, i, tradeType) {
-      trades.push({
-        openDate: marketData[i + 1].date,
-        opened: marketData[i + 1].open,
-        tradeType,
-      });
-    }
-    function closePosition(trades, marketData, i, lastTradeIndex) {
-      trades[lastTradeIndex]["closed"] = marketData[i + 1].open;
-      trades[lastTradeIndex]["closedDate"] = marketData[i + 1].date;
-      calculateProfit(trades, lastTradeIndex);
-    }
-
-    let trades = [];
-    let positionOpened = false;
-    for (let i = 0; i < date.length; i++) {
-      if (marketData[i].vqh == 0) {
-        continue;
-      }
-
-      if (
-        marketData[i].vqh != marketData[i - 1].vqh &&
-        positionOpened == false
-      ) {
-        if (marketData[i].vqh == 1) {
-          openPosition(trades, marketData, i, "long");
-          positionOpened = true;
-          continue;
-        } else if (marketData[i].vqh == -1) {
-          openPosition(trades, marketData, i, "short");
-          positionOpened = true;
-          continue;
-        }
-      }
-
-      if (
-        marketData[i].vqh != marketData[i - 1].vqh &&
-        positionOpened == true
-      ) {
-        let lastTradeIndex = trades.length - 1;
-
-        if (marketData[i].vqh == 1) {
-          closePosition(trades, marketData, i, lastTradeIndex);
-          openPosition(trades, marketData, i, "long");
-          continue;
-        } else if (marketData[i].vqh == -1) {
-          closePosition(trades, marketData, i, lastTradeIndex);
-          openPosition(trades, marketData, i, "short");
-          continue;
-        }
-      }
-    }
-
-    tradeInfo.push({
-      DATA: "TOTAL_PROFIT_REPORT",
-      totalProfit,
-      vqh_length,
-      vqh_filter,
-      ticker_size,
-      numberOfPostions,
+    tradeInfo.sort(function (a, b) {
+      if (a.totalProfit < b.totalProfit) return 1;
+      if (a.totalProfit > b.totalProfit) return -1;
+      return 0;
     });
+
+    vqhLength = [];
+    vqhFilter = [];
+
+    for (let i = 0; i < numberTestArrays; i++) {
+      let bestVqhLength = tradeInfo[i].vqhLength;
+      let bestVqhFilter = tradeInfo[i].vqhFilter;
+
+      vqhLength.push(
+        ...Array.from({ length: testSize }, () => {
+          // Prevent negative/0 val, indicator params only int
+          return Math.floor(
+            1 +
+              Math.abs(
+                bestVqhLength - maxParameter / 2 + Math.random() * maxParameter
+              )
+          );
+        })
+      );
+
+      vqhFilter.push(
+        ...Array.from({ length: testSize }, () => {
+          return Math.floor(
+            1 +
+              Math.abs(
+                bestVqhFilter - maxParameter / 2 + Math.random() * maxParameter
+              )
+          );
+        })
+      );
+    }
+  }
+  // Filter duplicats
+  vqhLength = vqhLength.filter(function (item, pos) {
+    return vqhLength.indexOf(item) == pos;
+  });
+  vqhFilter = vqhFilter.filter(function (item, pos) {
+    return vqhFilter.indexOf(item) == pos;
+  });
+
+  console.log(vqhLength, "\t", vqhFilter);
+  if (testIteration == maxTestIteration) {
+    return false;
+  }
+  testIteration++;
+
+  return true;
+}
+//----
+
+/* function tradeControl() {
+  if (tradeInfo.length == 0) {
+    // Initialize
+    vqhLength = Array.from(
+      { length: testLength },
+      () => 1 + Math.floor(Math.random() * maxParameter)
+    );
+
+    vqhFilter = Array.from(
+      { length: testLength },
+      () => 1 + Math.floor(Math.random() * maxParameter)
+    );
+  } else if (tradeInfo.length >= testIteration * testLength ** 2) {
+    tradeInfo.sort(function (a, b) {
+      if (a.totalProfit < b.totalProfit) return 1;
+      if (a.totalProfit > b.totalProfit) return -1;
+      return 0;
+    });
+
+    vqhLength = [];
+    vqhFilter = [];
+
+    for (let i = 0; i < testLength / 3; i++) {
+      let bestVqhLength = tradeInfo[i].vqhLength;
+      let bestVqhFilter = tradeInfo[i].vqhFilter;
+
+      vqhLength.push(
+        ...Array.from(
+          { length: testLength / 3 },
+          () =>
+            bestVqhLength -
+            testLength / 6 +
+            Math.floor((Math.random() * testLength) / 3)
+        )
+      );
+
+      vqhFilter.push(
+        ...Array.from(
+          { length: testLength / 3 },
+          () =>
+            bestVqhFilter -
+            testLength / 6 +
+            Math.floor((Math.random() * testLength) / 3)
+        )
+      );
+    }
+  }
+  console.log(vqhLength, "\n", vqhFilter);
+  testIteration++;
+  if (testIteration > maxTestIteration) {
+    return false;
+  }
+  return true;
+}
+ */
+//----
+
+while (tradeControl() == true) {
+  for (let vqhTestLength of vqhLength) {
+    for (let vqhTestFilter of vqhFilter) {
+      vqh.calculate(vqhTestLength, vqhTestFilter, 0.00001, [
+        data.high,
+        data.low,
+        data.open,
+        data.close,
+      ]);
+
+      let totalProfit = 0;
+      let numberOfPostions = 0;
+
+      function calculateProfit(trades, lastTradeIndex) {
+        if (trades[lastTradeIndex].tradeType == "long") {
+          trades[lastTradeIndex].profit =
+            trades[lastTradeIndex].closed - trades[lastTradeIndex].opened;
+          totalProfit += trades[lastTradeIndex].profit;
+          numberOfPostions++;
+        } else if (trades[lastTradeIndex].tradeType == "short") {
+          trades[lastTradeIndex].profit =
+            trades[lastTradeIndex].opened - trades[lastTradeIndex].closed;
+          totalProfit += trades[lastTradeIndex].profit;
+          numberOfPostions++;
+        }
+      }
+
+      function openPosition(trades, i, tradeType) {
+        trades.push({
+          openDate: data.date[i + 1],
+          opened: data.open[i + 1],
+          tradeType,
+        });
+      }
+      function closePosition(trades, i, lastTradeIndex) {
+        trades[lastTradeIndex]["closed"] = data.open[i + 1];
+        trades[lastTradeIndex]["closedDate"] = data.open[i + 1];
+        calculateProfit(trades, lastTradeIndex);
+      }
+
+      let trades = [];
+      let positionOpened = false;
+      for (let i = 0; i < data.date.length; i++) {
+        if (vqh.getValue(i) == 0) {
+          continue;
+        }
+
+        if (vqh.getValue(i) != vqh.getValue(i - 1) && positionOpened == false) {
+          if (vqh.getValue(i) == 1) {
+            openPosition(trades, i, "long");
+            positionOpened = true;
+            continue;
+          } else if (vqh.getValue(i) == -1) {
+            openPosition(trades, i, "short");
+            positionOpened = true;
+            continue;
+          }
+        }
+
+        if (vqh.getValue(i) != vqh.getValue(i - 1) && positionOpened == true) {
+          let lastTradeIndex = trades.length - 1;
+
+          if (vqh.getValue(i) == 1) {
+            closePosition(trades, i, lastTradeIndex);
+            openPosition(trades, i, "long");
+            continue;
+          } else if (vqh.getValue(i) == -1) {
+            closePosition(trades, i, lastTradeIndex);
+            openPosition(trades, i, "short");
+            continue;
+          }
+        }
+      }
+
+      tradeInfo.push({
+        DATA: "TOTAL_PROFIT_REPORT",
+        totalProfit,
+        numberOfPostions,
+        vqhLength: vqhTestLength,
+        vqhFilter: vqhTestFilter,
+        onIteration: testIteration,
+      });
+    }
   }
 }
+
 function saveJsonToFile(json, fileName) {
   return new Promise((resolve, reject) => {
     let jsonString = JSON.stringify(json);
@@ -282,5 +391,4 @@ function saveJsonToFile(json, fileName) {
     });
   });
 }
-saveJsonToFile(tradeInfo, "trades.json");
- */
+saveJsonToFile(tradeInfo, "trades_check.json");

@@ -5,6 +5,7 @@ class Atr {
   constructor() {
     const config = {};
     this.math = create(all, config);
+    this.atrValue;
   }
 
   calculate([high, low, close], period) {
@@ -20,7 +21,12 @@ class Atr {
       }
     );
 
-    return result;
+    this.atrValue = result;
+    return;
+  }
+
+  getValue(index) {
+    return this.atrValue[index];
   }
 }
 

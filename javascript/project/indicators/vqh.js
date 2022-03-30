@@ -21,7 +21,9 @@ for (let item of json) {
 } */
 
 class Vqh {
-  constructor() {}
+  constructor() {
+    this.vqhValue;
+  }
   calculate(vqh_length, vqh_filter, ticker_size, [high, low, open, close]) {
     let vqi = [];
     let trend = [];
@@ -116,7 +118,12 @@ class Vqh {
       );
       result.push(trend[i]);
     }
-    return result;
+    this.vqhValue = result;
+    return;
+  }
+
+  getValue(index) {
+    return this.vqhValue[index];
   }
 }
 

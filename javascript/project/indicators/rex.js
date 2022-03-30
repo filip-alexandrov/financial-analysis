@@ -5,6 +5,7 @@ class Rex {
   constructor() {
     const config = {};
     this.math = create(all, config);
+    this.rexValue;
   }
   calculate(smoothing, smoothingSig, [close, open, low, high]) {
     let tvb = this.math
@@ -31,7 +32,12 @@ class Rex {
       sig.push(...res[0]);
     });
 
-    return this.math.matrixFromColumns(rex, sig);
+    this.rexValue = this.math.matrixFromColumns(rex, sig);
+    return;
+  }
+
+  getValue(index) {
+    return [this.rexValue[0][index], this.rexValue[1][index]];
   }
 }
 

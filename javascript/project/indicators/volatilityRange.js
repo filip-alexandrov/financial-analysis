@@ -18,6 +18,7 @@ class VolatilityRange {
   constructor() {
     const config = {};
     this.math = create(all, config);
+    this.volRangeValue;
   }
   calculate(
     fastMaLength,
@@ -94,7 +95,12 @@ class VolatilityRange {
         bufferLine.push(...res[0]);
       }
     );
-    return this.math.matrixFromColumns(histo, bufferLine);
+    this.volRangeValue = this.math.matrixFromColumns(histo, bufferLine);
+    return;
+  }
+
+  getValue(index) {
+    return [this.volRangeValue[0][index], this.volRangeValue[1][index]];
   }
 }
 

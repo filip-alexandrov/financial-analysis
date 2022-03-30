@@ -5,6 +5,7 @@ class TsiMacd {
   constructor() {
     const config = {};
     this.math = create(all, config);
+    this.tsiMacdValue;
   }
   calculate(fastLength, slowLength, firstR, secondS, signalLength, [close]) {
     let smaSignal = false;
@@ -76,7 +77,11 @@ class TsiMacd {
       signal.push(...res[0]);
     });
 
-    return this.math.matrixFromColumns(tsi, signal);
+    this.tsiMacdValue = this.math.matrixFromColumns(tsi, signal);
+  }
+
+  getValue(index) {
+    return [tsiMacdValue[0][index], tsiMacdValue[1][index]];
   }
 }
 
