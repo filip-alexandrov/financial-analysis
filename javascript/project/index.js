@@ -5,6 +5,7 @@ import Rex from "./indicators/rex.js";
 import VolatilityRange from "./indicators/VolatilityRange.js";
 import Vqh from "./indicators/vqh.js";
 import MarketData from "./MarketData.js";
+import TradeControl from "./TradeControl.js";
 
 import fs from "fs";
 import { create, all } from "mathjs";
@@ -150,159 +151,24 @@ vqh.calculate(7, 2, 0.00001, [data.high, data.low, data.open, data.close]);
 
 console.log(atr.getValue(data.high.length - 1)); */
 
-// ----------
-let tradeInfo = [];
-let maxParameter = 50; // initial max range
-let reducerMaxParam = 2; // reduce range by factor
-let maxTestIteration = 3; // Tests to be performed
-// if numberTestArrays == testSize, exec time is const
-let numberTestArrays = 3; // independent random arrays in each test
-let testSize = 3; // random elements in each array
+let tc = new TradeControl({
+  maxParameter: 50,
+  reducerMaxParam: 2,
+  maxTestIteration: 7,
+  numberTestArrays: 3,
+  testSize: 3,
+});
 
-let vqhLength = [];
-let vqhFilter = [];
-let testIteration = 0;
-function tradeControl() {
-  if (tradeInfo.length == 0) {
-    for (let i = 0; i < numberTestArrays; i++) {
-      vqhLength.push(
-        ...Array.from(
-          { length: testSize },
-          () => 1 + Math.floor(Math.random() * maxParameter)
-        )
-      );
-
-      vqhFilter.push(
-        ...Array.from(
-          { length: testSize },
-          () => 1 + Math.floor(Math.random() * maxParameter)
-        )
-      );
-    }
-  } else {
-    maxParameter = maxParameter / reducerMaxParam;
-
-    tradeInfo.sort(function (a, b) {
-      if (a.totalProfit < b.totalProfit) return 1;
-      if (a.totalProfit > b.totalProfit) return -1;
-      return 0;
-    });
-
-    vqhLength = [];
-    vqhFilter = [];
-
-    for (let i = 0; i < numberTestArrays; i++) {
-      let bestVqhLength = tradeInfo[i].vqhLength;
-      let bestVqhFilter = tradeInfo[i].vqhFilter;
-
-      vqhLength.push(
-        ...Array.from({ length: testSize }, () => {
-          // Prevent negative/0 val, indicator params only int
-          return Math.floor(
-            1 +
-              Math.abs(
-                bestVqhLength - maxParameter / 2 + Math.random() * maxParameter
-              )
-          );
-        })
-      );
-
-      vqhFilter.push(
-        ...Array.from({ length: testSize }, () => {
-          return Math.floor(
-            1 +
-              Math.abs(
-                bestVqhFilter - maxParameter / 2 + Math.random() * maxParameter
-              )
-          );
-        })
-      );
-    }
-  }
-  // Filter duplicats
-  vqhLength = vqhLength.filter(function (item, pos) {
-    return vqhLength.indexOf(item) == pos;
-  });
-  vqhFilter = vqhFilter.filter(function (item, pos) {
-    return vqhFilter.indexOf(item) == pos;
-  });
-
-  console.log(vqhLength, "\t", vqhFilter);
-  if (testIteration == maxTestIteration) {
-    return false;
-  }
-  testIteration++;
-
-  return true;
-}
-//----
-
-/* function tradeControl() {
-  if (tradeInfo.length == 0) {
-    // Initialize
-    vqhLength = Array.from(
-      { length: testLength },
-      () => 1 + Math.floor(Math.random() * maxParameter)
-    );
-
-    vqhFilter = Array.from(
-      { length: testLength },
-      () => 1 + Math.floor(Math.random() * maxParameter)
-    );
-  } else if (tradeInfo.length >= testIteration * testLength ** 2) {
-    tradeInfo.sort(function (a, b) {
-      if (a.totalProfit < b.totalProfit) return 1;
-      if (a.totalProfit > b.totalProfit) return -1;
-      return 0;
-    });
-
-    vqhLength = [];
-    vqhFilter = [];
-
-    for (let i = 0; i < testLength / 3; i++) {
-      let bestVqhLength = tradeInfo[i].vqhLength;
-      let bestVqhFilter = tradeInfo[i].vqhFilter;
-
-      vqhLength.push(
-        ...Array.from(
-          { length: testLength / 3 },
-          () =>
-            bestVqhLength -
-            testLength / 6 +
-            Math.floor((Math.random() * testLength) / 3)
-        )
-      );
-
-      vqhFilter.push(
-        ...Array.from(
-          { length: testLength / 3 },
-          () =>
-            bestVqhFilter -
-            testLength / 6 +
-            Math.floor((Math.random() * testLength) / 3)
-        )
-      );
-    }
-  }
-  console.log(vqhLength, "\n", vqhFilter);
-  testIteration++;
-  if (testIteration > maxTestIteration) {
-    return false;
-  }
-  return true;
-}
- */
-//----
-
-while (tradeControl() == true) {
-  for (let vqhTestLength of vqhLength) {
-    for (let vqhTestFilter of vqhFilter) {
+while (tc.continueTrading() == true) {
+  for (let vqhTestLength of tc.vqhLength) {
+    for (let vqhTestFilter of tc.vqhFilter) {
       vqh.calculate(vqhTestLength, vqhTestFilter, 0.00001, [
         data.high,
         data.low,
         data.open,
         data.close,
       ]);
+      initIndicators(data.high, data.low, data.open, data.close);
 
       let totalProfit = 0;
       let numberOfPostions = 0;
@@ -368,13 +234,13 @@ while (tradeControl() == true) {
         }
       }
 
-      tradeInfo.push({
+      tc.tradeInfo.push({
         DATA: "TOTAL_PROFIT_REPORT",
         totalProfit,
         numberOfPostions,
         vqhLength: vqhTestLength,
         vqhFilter: vqhTestFilter,
-        onIteration: testIteration,
+        onIteration: tc.testIteration,
       });
     }
   }
@@ -391,4 +257,4 @@ function saveJsonToFile(json, fileName) {
     });
   });
 }
-saveJsonToFile(tradeInfo, "trades_check.json");
+saveJsonToFile(tc.tradeInfo, "trades_check.json");
