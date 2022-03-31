@@ -29,6 +29,16 @@ class TradeControlTsiMacd {
     };
   }
 
+  totalIterations() {
+    return (
+      this.fastLength.length *
+      this.slowLength.length *
+      this.firstR.length *
+      this.secondS.length *
+      this.signalLength.length
+    );
+  }
+
   continueTrading() {
     if (this.tradeInfo.length == 0) {
       for (let i = 0; i < this.numberTestArrays; i++) {
@@ -70,11 +80,6 @@ class TradeControlTsiMacd {
     } else {
       this.maxParameter = this.maxParameter / this.reducerMaxParam;
 
-      /* this.tradeInfo.sort(function (a, b) {
-        if (a.totalProfit < b.totalProfit) return 1;
-        if (a.totalProfit > b.totalProfit) return -1;
-        return 0;
-      }); */
       this.tradeInfo.sort(function (a, b) {
         return b.totalProfit - a.totalProfit;
       });
