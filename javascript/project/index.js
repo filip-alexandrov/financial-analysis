@@ -5,7 +5,8 @@ import Rex from "./indicators/rex.js";
 import VolatilityRange from "./indicators/VolatilityRange.js";
 import Vqh from "./indicators/vqh.js";
 import MarketData from "./MarketData.js";
-import { TradeControl, PositionControl } from "./TradeControl.js";
+import { PositionControl, TradeControlVQH } from "./TradeControlVQH.js";
+import { TradeControlTsiMacd } from "./TradeControlTsiMacd.js";
 
 import fs from "fs";
 import { create, all } from "mathjs";
@@ -151,7 +152,102 @@ vqh.calculate(7, 2, 0.00001, [data.high, data.low, data.open, data.close]);
 
 console.log(atr.getValue(data.high.length - 1)); */
 
-let tc = new TradeControl({
+let tcTsiMacd = new TradeControlTsiMacd({
+  maxParameter: 50,
+  reducerMaxParam: 5,
+  maxTestIteration: 5,
+  numberTestArrays: 3,
+  testSize: 3,
+});
+
+while (tcTsiMacd.continueTrading() == true) {
+  for (let testFastLength of tcTsiMacd.fastLength) {
+    for (let testSlowLength of tcTsiMacd.slowLength) {
+      for (let testFirstR of tcTsiMacd.firstR) {
+        for (let testSecondS of tcTsiMacd.secondS) {
+          for (let testSignalLength of tcTsiMacd.signalLength) {
+            tsi_macd.calculate(
+              testFastLength,
+              testSlowLength,
+              testFirstR,
+              testSecondS,
+              testSignalLength,
+              [data.close]
+            );
+
+            let pc = new PositionControl();
+
+            for (let i = 0; i < data.date.length; i++) {
+              if (tsi_macd.getValue(i)[0] == tsi_macd.getValue(i)[1]) {
+                continue;
+              }
+
+              if (pc.positionOpened == false) {
+                if (tsi_macd.getValue(i)[0] > tsi_macd.getValue(i)[1]) {
+                  pc.openPosition(data.open[i + 1], data.date[i + 1], "long");
+                  pc.positionOpened = true;
+                  continue;
+                } else if (tsi_macd.getValue(i)[0] < tsi_macd.getValue(i)[1]) {
+                  pc.openPosition(data.open[i + 1], data.date[i + 1], "short");
+                  pc.positionOpened = true;
+                  continue;
+                }
+              }
+
+              if (
+                pc.positionOpened == true &&
+                pc.lastTradeType() == "short" &&
+                tsi_macd.getValue(i)[0] > tsi_macd.getValue(i)[1]
+              ) {
+                pc.closePosition(data.open[i + 1], data.date[i + 1]);
+                pc.openPosition(data.open[i + 1], data.date[i + 1], "long");
+                continue;
+              } else if (
+                pc.positionOpened == true &&
+                pc.lastTradeType() == "long" &&
+                tsi_macd.getValue(i)[0] < tsi_macd.getValue(i)[1]
+              ) {
+                pc.positionOpened == true &&
+                  pc.closePosition(data.open[i + 1], data.date[i + 1]);
+                pc.openPosition(data.open[i + 1], data.date[i + 1], "short");
+                continue;
+              }
+            }
+            if (math.isNaN(pc.totalProfit)) {
+              pc.totalProfit = 0;
+            }
+
+            tcTsiMacd.tradeInfo.push({
+              DATA: "TOTAL_PROFIT_REPORT",
+              totalProfit: pc.totalProfit,
+              numberOfPostions: pc.numberOfPositions,
+              fastLength: testFastLength,
+              slowLength: testSlowLength,
+              firstR: testFirstR,
+              secondS: testSecondS,
+              signalLength: testSignalLength,
+              onIteration: tcTsiMacd.testIteration,
+            });
+          }
+        }
+      }
+    }
+  }
+}
+
+function saveJsonToFile(json, fileName) {
+  return new Promise((resolve, reject) => {
+    let jsonString = JSON.stringify(json);
+    fs.writeFile(fileName, jsonString, (err) => {
+      if (err) {
+        reject(err);
+      }
+      resolve();
+    });
+  });
+}
+saveJsonToFile(tcTsiMacd.tradeInfo, "trades_check.json");
+/* let tcVQH = new TradeControlVQH({
   maxParameter: 50,
   reducerMaxParam: 2,
   maxTestIteration: 7,
@@ -159,9 +255,9 @@ let tc = new TradeControl({
   testSize: 3,
 });
 
-while (tc.continueTrading() == true) {
-  for (let vqhTestLength of tc.vqhLength) {
-    for (let vqhTestFilter of tc.vqhFilter) {
+while (tcVQH.continueTradingVQH() == true) {
+  for (let vqhTestLength of tcVQH.vqhLength) {
+    for (let vqhTestFilter of tcVQH.vqhFilter) {
       vqh.calculate(vqhTestLength, vqhTestFilter, 0.00001, [
         data.high,
         data.low,
@@ -207,13 +303,13 @@ while (tc.continueTrading() == true) {
         }
       }
 
-      tc.tradeInfo.push({
+      tcVQH.tradeInfo.push({
         DATA: "TOTAL_PROFIT_REPORT",
         totalProfit: pc.totalProfit,
         numberOfPostions: pc.numberOfPositions,
         vqhLength: vqhTestLength,
         vqhFilter: vqhTestFilter,
-        onIteration: tc.testIteration,
+        onIteration: tcVQH.testIteration,
       });
     }
   }
@@ -230,4 +326,5 @@ function saveJsonToFile(json, fileName) {
     });
   });
 }
-saveJsonToFile(tc.tradeInfo, "trades_check.json");
+saveJsonToFile(tcVQH.tradeInfo, "trades_check.json");
+ */

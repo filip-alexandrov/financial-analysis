@@ -1,4 +1,4 @@
-class TradeControl {
+class TradeControlVQH {
   constructor({
     maxParameter,
     reducerMaxParam,
@@ -26,7 +26,7 @@ class TradeControl {
     };
   }
 
-  continueTrading() {
+  continueTradingVQH() {
     if (this.tradeInfo.length == 0) {
       for (let i = 0; i < this.numberTestArrays; i++) {
         this.vqhLength.push(
@@ -115,12 +115,12 @@ class PositionControl {
       this.trades[lastTradeIndex].profit =
         this.trades[lastTradeIndex].closed - this.trades[lastTradeIndex].opened;
       this.totalProfit += this.trades[lastTradeIndex].profit;
-      this.numberOfPostions++;
+      this.numberOfPositions++;
     } else if (this.trades[lastTradeIndex].tradeType == "short") {
       this.trades[lastTradeIndex].profit =
         this.trades[lastTradeIndex].opened - this.trades[lastTradeIndex].closed;
       this.totalProfit += this.trades[lastTradeIndex].profit;
-      this.numberOfPostions++;
+      this.numberOfPositions++;
     }
   }
 
@@ -139,6 +139,10 @@ class PositionControl {
     this.trades[lastTradeIndex]["closedDate"] = nextBarDate;
     this.calculateProfit(lastTradeIndex);
   }
+  lastTradeType() {
+    let lastTradeIndex = this.trades.length - 1;
+    return this.trades[lastTradeIndex].tradeType;
+  }
 }
 
-export { TradeControl, PositionControl };
+export { TradeControlVQH, PositionControl };
