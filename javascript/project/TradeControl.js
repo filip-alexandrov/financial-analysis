@@ -91,6 +91,7 @@ class TradeControl {
     this.vqhLength = this.uniq(this.vqhLength);
     this.vqhFilter = this.uniq(this.vqhFilter);
 
+    // will log one more element than required
     console.log(this.vqhLength, "\t", this.vqhFilter);
     if (this.testIteration == this.maxTestIteration) {
       return false;
@@ -101,8 +102,43 @@ class TradeControl {
   }
 }
 
-class positionControl {
-  initIndicators() {}
+class PositionControl {
+  constructor() {
+    this.totalProfit = 0;
+    this.numberOfPositions = 0;
+    this.trades = [];
+    this.positionOpened = false;
+  }
+
+  calculateProfit(lastTradeIndex) {
+    if (this.trades[lastTradeIndex].tradeType == "long") {
+      this.trades[lastTradeIndex].profit =
+        this.trades[lastTradeIndex].closed - this.trades[lastTradeIndex].opened;
+      this.totalProfit += this.trades[lastTradeIndex].profit;
+      this.numberOfPostions++;
+    } else if (this.trades[lastTradeIndex].tradeType == "short") {
+      this.trades[lastTradeIndex].profit =
+        this.trades[lastTradeIndex].opened - this.trades[lastTradeIndex].closed;
+      this.totalProfit += this.trades[lastTradeIndex].profit;
+      this.numberOfPostions++;
+    }
+  }
+
+  openPosition(nextBarOpenPrice, nextBarDate, tradeType) {
+    this.trades.push({
+      openDate: nextBarDate,
+      opened: nextBarOpenPrice,
+      tradeType,
+    });
+  }
+
+  closePosition(nextBarOpenPrice, nextBarDate) {
+    let lastTradeIndex = this.trades.length - 1;
+
+    this.trades[lastTradeIndex]["closed"] = nextBarOpenPrice;
+    this.trades[lastTradeIndex]["closedDate"] = nextBarDate;
+    this.calculateProfit(lastTradeIndex);
+  }
 }
 
-export default TradeControl;
+export { TradeControl, PositionControl };

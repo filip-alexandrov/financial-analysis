@@ -5,7 +5,7 @@ import Rex from "./indicators/rex.js";
 import VolatilityRange from "./indicators/VolatilityRange.js";
 import Vqh from "./indicators/vqh.js";
 import MarketData from "./MarketData.js";
-import TradeControl from "./TradeControl.js";
+import { TradeControl, PositionControl } from "./TradeControl.js";
 
 import fs from "fs";
 import { create, all } from "mathjs";
@@ -168,67 +168,40 @@ while (tc.continueTrading() == true) {
         data.open,
         data.close,
       ]);
-      initIndicators(data.high, data.low, data.open, data.close);
 
-      let totalProfit = 0;
-      let numberOfPostions = 0;
+      let pc = new PositionControl();
 
-      function calculateProfit(trades, lastTradeIndex) {
-        if (trades[lastTradeIndex].tradeType == "long") {
-          trades[lastTradeIndex].profit =
-            trades[lastTradeIndex].closed - trades[lastTradeIndex].opened;
-          totalProfit += trades[lastTradeIndex].profit;
-          numberOfPostions++;
-        } else if (trades[lastTradeIndex].tradeType == "short") {
-          trades[lastTradeIndex].profit =
-            trades[lastTradeIndex].opened - trades[lastTradeIndex].closed;
-          totalProfit += trades[lastTradeIndex].profit;
-          numberOfPostions++;
-        }
-      }
-
-      function openPosition(trades, i, tradeType) {
-        trades.push({
-          openDate: data.date[i + 1],
-          opened: data.open[i + 1],
-          tradeType,
-        });
-      }
-      function closePosition(trades, i, lastTradeIndex) {
-        trades[lastTradeIndex]["closed"] = data.open[i + 1];
-        trades[lastTradeIndex]["closedDate"] = data.open[i + 1];
-        calculateProfit(trades, lastTradeIndex);
-      }
-
-      let trades = [];
-      let positionOpened = false;
       for (let i = 0; i < data.date.length; i++) {
         if (vqh.getValue(i) == 0) {
           continue;
         }
 
-        if (vqh.getValue(i) != vqh.getValue(i - 1) && positionOpened == false) {
+        if (
+          vqh.getValue(i) != vqh.getValue(i - 1) &&
+          pc.positionOpened == false
+        ) {
           if (vqh.getValue(i) == 1) {
-            openPosition(trades, i, "long");
-            positionOpened = true;
+            pc.openPosition(data.open[i + 1], data.date[i + 1], "long");
+            pc.positionOpened = true;
             continue;
           } else if (vqh.getValue(i) == -1) {
-            openPosition(trades, i, "short");
-            positionOpened = true;
+            pc.openPosition(data.open[i + 1], data.date[i + 1], "short");
+            pc.positionOpened = true;
             continue;
           }
         }
 
-        if (vqh.getValue(i) != vqh.getValue(i - 1) && positionOpened == true) {
-          let lastTradeIndex = trades.length - 1;
-
+        if (
+          vqh.getValue(i) != vqh.getValue(i - 1) &&
+          pc.positionOpened == true
+        ) {
           if (vqh.getValue(i) == 1) {
-            closePosition(trades, i, lastTradeIndex);
-            openPosition(trades, i, "long");
+            pc.closePosition(data.open[i + 1], data.date[i + 1]);
+            pc.openPosition(data.open[i + 1], data.date[i + 1], "long");
             continue;
           } else if (vqh.getValue(i) == -1) {
-            closePosition(trades, i, lastTradeIndex);
-            openPosition(trades, i, "short");
+            pc.closePosition(data.open[i + 1], data.date[i + 1]);
+            pc.openPosition(data.open[i + 1], data.date[i + 1], "short");
             continue;
           }
         }
@@ -236,8 +209,8 @@ while (tc.continueTrading() == true) {
 
       tc.tradeInfo.push({
         DATA: "TOTAL_PROFIT_REPORT",
-        totalProfit,
-        numberOfPostions,
+        totalProfit: pc.totalProfit,
+        numberOfPostions: pc.numberOfPositions,
         vqhLength: vqhTestLength,
         vqhFilter: vqhTestFilter,
         onIteration: tc.testIteration,
