@@ -32,6 +32,7 @@ class Vqh {
     let cLow = [];
     let cOpen = [];
     let cClose = [];
+    let pClose = [];
     let sumVqi = [];
 
     let result = [];
@@ -40,6 +41,7 @@ class Vqh {
       cLow.push(0);
       cOpen.push(0);
       cClose.push(0);
+      pClose.push(0);
 
       vqi.push(0);
       trend.push(0);
@@ -79,17 +81,25 @@ class Vqh {
       }
     );
 
+    tulind.indicators.lag.indicator([close], [1], function (err, result) {
+      tulind.indicators.wma.indicator(
+        [result[0]],
+        [vqh_length],
+        function (err, results) {
+          pClose.push(result[0][0], ...results[0]);
+        }
+      );
+    });
+
     for (let i = vqh_length - 1; i < open.length; i++) {
       /*  current Done Bar = i;
         previous Done Bar = i - 1; */
 
       let vqiCalc =
         cHigh[i] - cLow[i] != 0 &&
-        Math.max(cHigh[i], cClose[i - 1]) - Math.min(cLow[i], cClose[i - 1]) !=
-          0
-          ? ((cClose[i] - cClose[i - 1]) /
-              (Math.max(cHigh[i], cClose[i - 1]) -
-                Math.min(cLow[i], cClose[i - 1])) +
+        Math.max(cHigh[i], pClose[i]) - Math.min(cLow[i], pClose[i]) != 0
+          ? ((cClose[i] - pClose[i]) /
+              (Math.max(cHigh[i], pClose[i]) - Math.min(cLow[i], pClose[i])) +
               (cClose[i] - cOpen[i]) / (cHigh[i] - cLow[i])) *
             0.5
           : vqi[i - 1];
@@ -105,9 +115,11 @@ class Vqh {
 
       vqi.push(
         Math.abs(vqiCalc) *
-          ((cClose[i] - cClose[i - 1] + cClose[i] - cOpen[i]) * 0.5)
+          ((cClose[i] - pClose[i] + cClose[i] - cOpen[i]) * 0.5)
       );
+
       sumVqi.push(vqi.reduce((partialSum, a) => partialSum + a, 0));
+      if (vqi.length > 1000) vqi.shift();
 
       let toAdd = sumVqi[i] - sumVqi[i - 1] > 0 ? 1 : -1;
       trend.push(

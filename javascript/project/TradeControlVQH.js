@@ -102,8 +102,33 @@ class TradeControlVQH {
   }
 }
 
-class PositionControl {
-  constructor() {
+class Bank {
+  constructor({ leverage, balance, riskFactor }) {
+    this.leverage = leverage;
+    this.balance = balance;
+    this.riskFactor = riskFactor;
+  }
+  getBalance() {
+    return this.balance;
+  }
+
+  calcInvestmentSize(priceLevel, stopLoss) {
+    let maxLoss = Math.abs(priceLevel - stopLoss) * this.leverage;
+    let tradeMultiplier = (this.riskFactor * this.balance) / maxLoss;
+    return tradeMultiplier;
+  }
+
+  calcProfit(change, tradeMultiplier) {
+    let fullProfit = change * this.leverage * tradeMultiplier;
+    this.balance = this.balance + fullProfit;
+    return fullProfit;
+  }
+}
+
+class PositionControl extends Bank {
+  constructor({ leverage, balance, riskFactor }) {
+    super({ leverage, balance, riskFactor });
+
     this.totalProfit = 0;
     this.numberOfPositions = 0;
     this.trades = [];
@@ -112,23 +137,47 @@ class PositionControl {
 
   calculateProfit(lastTradeIndex) {
     if (this.trades[lastTradeIndex].tradeType == "long") {
-      this.trades[lastTradeIndex].profit =
+      let change =
         this.trades[lastTradeIndex].closed - this.trades[lastTradeIndex].opened;
-      this.totalProfit += this.trades[lastTradeIndex].profit;
+      let profit = super.calcProfit(
+        change,
+        this.trades[lastTradeIndex].tradeMultiplier
+      );
+
+      this.trades[lastTradeIndex].profit = profit;
+      this.trades[lastTradeIndex].endBalance = super.getBalance();
+
+      this.totalProfit += profit;
       this.numberOfPositions++;
     } else if (this.trades[lastTradeIndex].tradeType == "short") {
-      this.trades[lastTradeIndex].profit =
+      let change =
         this.trades[lastTradeIndex].opened - this.trades[lastTradeIndex].closed;
-      this.totalProfit += this.trades[lastTradeIndex].profit;
+      let profit = super.calcProfit(
+        change,
+        this.trades[lastTradeIndex].tradeMultiplier
+      );
+
+      this.trades[lastTradeIndex].profit = profit;
+      this.trades[lastTradeIndex].getBalance = super.getBalance();
+
+      this.totalProfit += profit;
       this.numberOfPositions++;
     }
   }
 
-  openPosition(nextBarOpenPrice, nextBarDate, tradeType) {
+  openPosition(nextBarOpenPrice, nextBarDate, tradeType, stopLoss, takeProfit) {
+    stopLoss = parseFloat(nextBarOpenPrice) + parseFloat(stopLoss);
+    takeProfit = nextBarOpenPrice + takeProfit;
+    let tradeMultiplier = super.calcInvestmentSize(nextBarOpenPrice, stopLoss);
+
     this.trades.push({
       openDate: nextBarDate,
       opened: nextBarOpenPrice,
       tradeType,
+      stopLoss,
+      takeProfit,
+      startBalance: super.getBalance(),
+      tradeMultiplier: tradeMultiplier,
     });
   }
 
@@ -139,10 +188,32 @@ class PositionControl {
     this.trades[lastTradeIndex]["closedDate"] = nextBarDate;
     this.calculateProfit(lastTradeIndex);
   }
+
   lastTradeType() {
+    if (this.trades.length == 0) return "no trades";
     let lastTradeIndex = this.trades.length - 1;
     return this.trades[lastTradeIndex].tradeType;
   }
+
+  lastTradeOpenPrice() {
+    let lastTradeIndex = this.trades.length - 1;
+    return this.trades[lastTradeIndex].opened;
+  }
+
+  getLastStopLoss() {
+    let lastTradeIndex = this.trades.length - 1;
+    return this.trades[lastTradeIndex].stopLoss;
+  }
+
+  getLastTakeProfit() {
+    let lastTradeIndex = this.trades.length - 1;
+    return this.trades[lastTradeIndex].takeProfit;
+  }
+
+  getLastOpenPrice() {
+    let lastTradeIndex = this.trades.length - 1;
+    return this.trades[lastTradeIndex].opened;
+  }
 }
 
-export { TradeControlVQH, PositionControl };
+export { TradeControlVQH, PositionControl, Bank };

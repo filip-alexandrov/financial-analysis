@@ -95,12 +95,14 @@ class VolatilityRange {
         bufferLine.push(...res[0]);
       }
     );
-    this.volRangeValue = this.math.matrixFromColumns(histo, bufferLine);
+    // this.volRangeValue = this.math.matrixFromColumns(histo, bufferLine);
+    this.volRangeValue = [histo, bufferLine];
     return;
   }
 
   getValue(index) {
     return [this.volRangeValue[0][index], this.volRangeValue[1][index]];
+    // return [this.volRangeValue[0][index], this.volRangeValue[1][index]];
   }
 }
 

@@ -5,7 +5,7 @@ import fs from "fs";
 function csvToJson(csvFilePath) {
   return new Promise((resolve, reject) => {
     csv({
-      delimiter: "\t",
+      delimiter: ",",
     })
       .fromFile(csvFilePath)
       .then((jsonObj) => {
@@ -26,8 +26,9 @@ function saveJsonToFile(json, fileName) {
   });
 }
 
-let targetFile = "fx/EURUSD_M30";
+let targetFile = "fx/EURUSD-longM1";
 
-csvToJson(`./data/${targetFile}.csv`).then((jsonObj) => {
-  saveJsonToFile(jsonObj, `./data/${targetFile}.json`);
+csvToJson(`../data/${targetFile}.csv`).then((jsonObj) => {
+  console.log(jsonObj[0]);
+  saveJsonToFile(jsonObj, `../data/${targetFile}.json`);
 });

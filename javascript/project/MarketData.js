@@ -16,11 +16,11 @@ class MarketData {
 
     for (let item of json) {
       this.date.push(item.Time);
-      this.open.push(item.Open);
-      this.close.push(item.Close);
-      this.high.push(item.High);
-      this.low.push(item.Low);
-      this.volume.push(item.Volume);
+      this.open.push(parseFloat(item.Open));
+      this.close.push(parseFloat(item.Close));
+      this.high.push(parseFloat(item.High));
+      this.low.push(parseFloat(item.Low));
+      this.volume.push(parseFloat(item.Volume));
     }
   }
 

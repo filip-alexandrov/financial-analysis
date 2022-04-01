@@ -32,7 +32,7 @@ class Rex {
       sig.push(...res[0]);
     });
 
-    this.rexValue = this.math.matrixFromColumns(rex, sig);
+    this.rexValue = [rex, sig];
     return;
   }
 
