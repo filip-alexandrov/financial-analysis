@@ -35,7 +35,7 @@ let kama = new Kama();
 let rex = new Rex();
 let volatilityRange = new VolatilityRange();
 let vqh = new Vqh();
-let data = new MarketData("fx", "EURUSD_M1");
+let data = new MarketData("fx", "EURUSD_H4");
 
 atr.calculate([data.high, data.low, data.close], 14);
 tsi_macd.calculate(8, 21, 8, 5, 9, [data.close]);
@@ -184,6 +184,8 @@ let pc = new PositionControl({
   riskFactor: 0.02,
 });
 
+let indicatorData = [];
+
 let tradeInfo = [];
 for (let i = 0; i < data.date.length; i++) {
   if (i > 22000) {
@@ -217,9 +219,9 @@ for (let i = 0; i < data.date.length; i++) {
     tsiSignal = "sell";
   }
 
-  if (vqh.getValue(i) == 1) {
+  if (vqh.getValue(i) == 1 && vqh.getValue(i - 2) == -1) {
     vqhSignal = "buy";
-  } else if (vqh.getValue(i) == -1) {
+  } else if (vqh.getValue(i) == -1 && vqh.getValue(i - 2) == 1) {
     vqhSignal = "sell";
   }
 
@@ -231,16 +233,24 @@ for (let i = 0; i < data.date.length; i++) {
   // l(pc.positionOpened && pc.getLastTakeProfit());
   if (
     pc.positionOpened == true &&
+    pc.getIfHalfAlreadyClosed() == false &&
     pc.lastTradeType() == "long" &&
     pc.getLastTakeProfit() < data.high[i]
   ) {
     atrTakeProfit = true;
   } else if (
     pc.positionOpened == true &&
+    pc.getIfHalfAlreadyClosed() == false &&
     pc.lastTradeType() == "short" &&
     pc.getLastTakeProfit() > data.low[i]
   ) {
     atrTakeProfit = true;
+  }
+
+  if (rex.getValue(i)[0] > rex.getValue(i)[1]) {
+    rexSignal = "buy";
+  } else if (rex.getValue(i)[0] < rex.getValue(i)[1]) {
+    rexSignal = "sell";
   }
 
   // Opening position
@@ -250,12 +260,23 @@ for (let i = 0; i < data.date.length; i++) {
     vqhSignal == "buy" &&
     volatilityRangeSignal == true
   ) {
+    /* indicatorData.push({
+      Date: data.date[i],
+      tsi_macd_main: tsi_macd.getValue(i)[0],
+      tsi_macd_signal: tsi_macd.getValue(i)[1],
+      vqh: vqh.getValue(i),
+      rex_line: rex.getValue(i)[0],
+      rex_signal: rex.getValue(i)[1],
+
+      voli_hist: volatilityRange.getValue(i)[0],
+      voli_line: volatilityRange.getValue(i)[1],
+    }); */
     pc.openPosition(
       data.open[i + 1],
       data.date[i + 1],
       "long",
       -2 * atr.getValue(i),
-      atr.getValue(i)
+      atr.getValue(i) // single
     );
     pc.positionOpened = true;
   } else if (
@@ -269,23 +290,40 @@ for (let i = 0; i < data.date.length; i++) {
       data.date[i + 1],
       "short",
       2 * atr.getValue(i),
-      -atr.getValue(i)
+      -atr.getValue(i) // single
     );
     pc.positionOpened = true;
   }
 
-  // Closing positions with take profit
+  // Closing Half positions with take profit
   if (
     pc.positionOpened == true &&
     pc.lastTradeType() == "short" &&
     atrTakeProfit == true
+  ) {
+    pc.closeHalfPosition(data.open[i + 1], data.date[i + 1]);
+  } else if (
+    pc.positionOpened == true &&
+    pc.lastTradeType() == "long" &&
+    atrTakeProfit == true
+  ) {
+    pc.closeHalfPosition(data.open[i + 1], data.date[i + 1]);
+  }
+
+  // Close Full Position with TP
+  if (
+    pc.positionOpened == true &&
+    pc.lastTradeType() == "short" &&
+    rexSignal == "buy" &&
+    data.open[i] < pc.lastTradeOpenPrice()
   ) {
     pc.closePosition(data.open[i + 1], data.date[i + 1]);
     pc.positionOpened = false;
   } else if (
     pc.positionOpened == true &&
     pc.lastTradeType() == "long" &&
-    atrTakeProfit == true
+    rexSignal == "sell" &&
+    data.open[i] > pc.lastTradeOpenPrice()
   ) {
     pc.closePosition(data.open[i + 1], data.date[i + 1]);
     pc.positionOpened = false;
@@ -297,14 +335,22 @@ for (let i = 0; i < data.date.length; i++) {
     pc.lastTradeType() == "short" &&
     data.high[i] > pc.getLastStopLoss()
   ) {
-    pc.closePosition(data.open[i + 1], data.date[i + 1]);
+    if (pc.getLastOpenPrice() == pc.getLastStopLoss()) {
+      pc.closePosition(pc.getLastOpenPrice(), data.date[i]);
+    } else {
+      pc.closePosition(data.open[i + 1], data.date[i + 1]);
+    }
     pc.positionOpened = false;
   } else if (
     pc.positionOpened == true &&
     pc.lastTradeType() == "long" &&
     data.low[i] < pc.getLastStopLoss()
   ) {
-    pc.closePosition(data.open[i + 1], data.date[i + 1]);
+    if (pc.getLastOpenPrice() == pc.getLastStopLoss()) {
+      pc.closePosition(pc.getLastOpenPrice(), data.date[i]);
+    } else {
+      pc.closePosition(data.open[i + 1], data.date[i + 1]);
+    }
     pc.positionOpened = false;
   }
 }
@@ -316,7 +362,8 @@ tradeInfo.push(
   },
   pc.trades
 );
-saveJsonToFile(tradeInfo, "trades_check.json");
+saveJsonToFile(pc.trades, "../../python/trades_check.json");
+saveJsonToFile(indicatorData, "indicators_check.json");
 
 /* let lastOpenedIndex = 0;
 

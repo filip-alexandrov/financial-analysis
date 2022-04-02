@@ -12,7 +12,6 @@ class MarketData {
     this.close = [];
     this.high = [];
     this.low = [];
-    this.volume = [];
 
     for (let item of json) {
       this.date.push(item.Time);
@@ -20,7 +19,6 @@ class MarketData {
       this.close.push(parseFloat(item.Close));
       this.high.push(parseFloat(item.High));
       this.low.push(parseFloat(item.Low));
-      this.volume.push(parseFloat(item.Volume));
     }
   }
 

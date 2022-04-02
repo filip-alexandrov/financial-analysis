@@ -35,6 +35,9 @@ class VolatilityRange {
       [close],
       [fastMaLength],
       function (err, res) {
+        for (let i = 0; i < tulind.indicators.ema.start([fastMaLength]); i++) {
+          fastMa.push(0);
+        }
         fastMa.push(...res[0]);
       }
     );
@@ -42,14 +45,15 @@ class VolatilityRange {
       [close],
       [slowMaLength],
       function (err, res) {
+        for (let i = 0; i < tulind.indicators.ema.start([slowMaLength]); i++) {
+          slowMa.push(0);
+        }
         slowMa.push(...res[0]);
       }
     );
 
-    let val = this.math.multiply(
-      100,
-      this.math.dotDivide(this.math.subtract(fastMa, slowMa), slowMa)
-    );
+    let val = this.math.subtract(fastMa, slowMa);
+    val = this.math.chain(val).dotDivide(slowMa).dotMultiply(100).done();
 
     let min = [];
     let max = [];
@@ -83,8 +87,16 @@ class VolatilityRange {
     );
 
     let range = this.math.subtract(max, min);
-    let flUp = this.math.dotDivide(this.math.multiply(upLevel, range), 100);
-    let flDown = this.math.dotDivide(this.math.multiply(downLevel, range), 100);
+    let flUp = this.math
+      .chain(upLevel)
+      .dotMultiply(range)
+      .dotDivide(100)
+      .done();
+    let flDown = this.math
+      .chain(downLevel)
+      .dotMultiply(range)
+      .dotDivide(100)
+      .done();
     let histo = this.math.abs(this.math.subtract(flUp, flDown));
 
     let bufferLine = [];
@@ -92,6 +104,13 @@ class VolatilityRange {
       [histo],
       [volatilityPeriod],
       function (err, res) {
+        for (
+          let i = 0;
+          i < tulind.indicators.ema.start([volatilityPeriod]);
+          i++
+        ) {
+          bufferLine.push(0);
+        }
         bufferLine.push(...res[0]);
       }
     );

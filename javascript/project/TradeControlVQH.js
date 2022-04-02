@@ -144,7 +144,7 @@ class PositionControl extends Bank {
         this.trades[lastTradeIndex].tradeMultiplier
       );
 
-      this.trades[lastTradeIndex].profit = profit;
+      this.trades[lastTradeIndex].secondHalfProfit = profit;
       this.trades[lastTradeIndex].endBalance = super.getBalance();
 
       this.totalProfit += profit;
@@ -157,8 +157,8 @@ class PositionControl extends Bank {
         this.trades[lastTradeIndex].tradeMultiplier
       );
 
-      this.trades[lastTradeIndex].profit = profit;
-      this.trades[lastTradeIndex].getBalance = super.getBalance();
+      this.trades[lastTradeIndex].secondHalfProfit = profit;
+      this.trades[lastTradeIndex].endBalance = super.getBalance();
 
       this.totalProfit += profit;
       this.numberOfPositions++;
@@ -178,7 +178,52 @@ class PositionControl extends Bank {
       takeProfit,
       startBalance: super.getBalance(),
       tradeMultiplier: tradeMultiplier,
+      closedHalfWithAtr: false,
     });
+  }
+
+  closeHalfPosition(nextBarOpenPrice, nextBarDate) {
+    let lastTradeIndex = this.trades.length - 1;
+
+    this.trades[lastTradeIndex]["closedHalfWithAtr"] = true;
+    this.trades[lastTradeIndex]["closedHalfPosition"] = nextBarOpenPrice;
+    this.trades[lastTradeIndex]["closedHalfDate"] = nextBarDate;
+    this.calculateHalfProfit(lastTradeIndex);
+  }
+
+  calculateHalfProfit(lastTradeIndex) {
+    if (this.trades[lastTradeIndex].tradeType == "long") {
+      this.trades[lastTradeIndex].tradeMultiplier /= 2;
+      let change =
+        this.trades[lastTradeIndex].closedHalfPosition -
+        this.trades[lastTradeIndex].opened;
+      console.log(change);
+      let profit = super.calcProfit(
+        change,
+        this.trades[lastTradeIndex].tradeMultiplier
+      );
+
+      this.trades[lastTradeIndex].profitFromHalfPosition = profit;
+      this.trades[lastTradeIndex].balanceAfterHalfPos = super.getBalance();
+
+      this.trades[lastTradeIndex].stopLoss = this.trades[lastTradeIndex].opened;
+      this.totalProfit += profit;
+    } else if (this.trades[lastTradeIndex].tradeType == "short") {
+      this.trades[lastTradeIndex].tradeMultiplier /= 2;
+      let change =
+        this.trades[lastTradeIndex].opened -
+        this.trades[lastTradeIndex].closedHalfPosition;
+      let profit = super.calcProfit(
+        change,
+        this.trades[lastTradeIndex].tradeMultiplier
+      );
+
+      this.trades[lastTradeIndex].profitFromHalfPosition = profit;
+      this.trades[lastTradeIndex].balanceAfterHalfPos = super.getBalance();
+
+      this.trades[lastTradeIndex].stopLoss = this.trades[lastTradeIndex].opened;
+      this.totalProfit += profit;
+    }
   }
 
   closePosition(nextBarOpenPrice, nextBarDate) {
@@ -213,6 +258,11 @@ class PositionControl extends Bank {
   getLastOpenPrice() {
     let lastTradeIndex = this.trades.length - 1;
     return this.trades[lastTradeIndex].opened;
+  }
+
+  getIfHalfAlreadyClosed() {
+    let lastTradeIndex = this.trades.length - 1;
+    return this.trades[lastTradeIndex].closedHalfWithAtr;
   }
 }
 

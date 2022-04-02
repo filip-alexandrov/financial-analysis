@@ -29,6 +29,15 @@ function saveJsonToFile(json, fileName) {
 let targetFile = "fx/EURUSD-longM1";
 
 csvToJson(`../data/${targetFile}.csv`).then((jsonObj) => {
-  console.log(jsonObj[0]);
-  saveJsonToFile(jsonObj, `../data/${targetFile}.json`);
+  let json = [];
+  jsonObj.forEach((element) => {
+    json.push({
+      Date: `${element["<DTYYYYMMDD>"]} ${element["<TIME>"]}`,
+      Open: element["<OPEN>"],
+      Close: element["<CLOSE>"],
+      High: element["<HIGH>"],
+      Low: element["<LOW>"],
+    });
+  });
+  saveJsonToFile(json, `../data/${targetFile}.json`);
 });

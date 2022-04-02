@@ -27,7 +27,7 @@ class Vqh {
   calculate(vqh_length, vqh_filter, ticker_size, [high, low, open, close]) {
     let vqi = [];
     let trend = [];
-
+    let vqiSumElements = 1000;
     let cHigh = [];
     let cLow = [];
     let cOpen = [];
@@ -119,7 +119,7 @@ class Vqh {
       );
 
       sumVqi.push(vqi.reduce((partialSum, a) => partialSum + a, 0));
-      if (vqi.length > 1000) vqi.shift();
+      if (vqi.length > vqiSumElements) vqi.shift();
 
       let toAdd = sumVqi[i] - sumVqi[i - 1] > 0 ? 1 : -1;
       trend.push(
